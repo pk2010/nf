@@ -4,10 +4,10 @@ iptables -t nat -F
 iptables -F
 rmmod xt_connlimit
 rmmod xt_conntrack
+rmmod ipt_MASQUERADE
 rmmod nf_nat_masquerade_ipv4
 rmmod iptable_filter
 rmmod ipt_REJECT
-rmmod ipt_MASQUERADE
 rmmod iptable_filter
 rmmod iptable_nat
 rmmod ip_tables
