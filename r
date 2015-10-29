@@ -16,4 +16,6 @@ rmmod nf_nat_ipv4
 rmmod nf_nat
 rmmod nf_conntrack_ipv4
 rmmod nf_defrag_ipv4
+rmmod nf_conntrack_netlink
+rmmod nfnetlink
 rmmod nf_conntrack

@@ -12,7 +12,7 @@
  * published by the Free Software Foundation.
  */
 
-#include <linux/types.h>
+ #include <linux/types.h>
 #include <linux/netfilter.h>
 #include <linux/module.h>
 #include <linux/sched.h>
@@ -54,8 +54,32 @@
 #include <net/netfilter/nf_nat_helper.h>
 
 #define NF_CONNTRACK_VERSION	"0.5.0"
-char activcon[65536];
-EXPORT_SYMBOL(activcon);
+
+#include <linux/ip.h>
+#include "interface.h"
+
+#define NIPQUAD(addr) ((unsigned char *)&addr)[0],((unsigned char *)&addr)[1],((unsigned char *)&addr)[2],((unsigned char *)&addr)[3]
+
+atomic_t activecon[65536];
+EXPORT_SYMBOL(activecon);
+u32 pkfilter_serverip;
+EXPORT_SYMBOL(pkfilter_serverip);
+
+
+uint32_t OWNIP(unsigned int a,unsigned int b,unsigned int c,unsigned int d)
+{
+//struct net_device *device;
+//struct in_device *in_dev;
+//struct in_ifaddr *if_info;
+//	uint32_t *pa;
+//	device = dev_get_by_name(&init_net,GUESSINTERFACE);
+//	in_dev = (struct in_device *)device->ip_ptr;
+//	if_info = in_dev->ifa_list;
+//	pa = &if_info->ifa_local;
+//	return *pa;
+	return (a+(b*256)+(c*65536)+(d*16777216U));
+}
+
 
 int (*nfnetlink_parse_nat_setup_hook)(struct nf_conn *ct,
 				      enum nf_nat_manip_type manip,
@@ -398,6 +422,20 @@ bool nf_ct_delete(struct nf_conn *ct, u32 portid, int report)
 {
 	struct nf_conn_tstamp *tstamp;
 
+	u32 origdip,origsip;
+	u16 origdport,origsport;
+	struct iphdr * network_header;
+
+	//network_header = (struct iphdr *)skb_network_header(skb);
+	origdip = ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.ip;
+	origsip = ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.ip;
+	if (/*network_header->protocol==IPPROTO_TCP && */origdip == pkfilter_serverip){
+		origdport = ntohs((u16) ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u.tcp.port);
+		origsport = ntohs((u16) ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.src.l3num);
+		atomic_dec(&activecon[origdport]);
+		printk("--%d.%d.%d.%d:%d > %d.%d.%d.%d:%d[%d]\n",NIPQUAD(origsip),origsport,NIPQUAD(origdip),origdport,atomic_read(&activecon[origdport]));
+	}
+	
 	tstamp = nf_conn_tstamp_find(ct);
 	if (tstamp && tstamp->stop == 0)
 		tstamp->stop = ktime_to_ns(ktime_get_real());
@@ -623,8 +661,13 @@ __nf_conntrack_confirm(struct sk_buff *skb)
 	u16 zone;
 	unsigned int sequence;
 
+	u32 origdip,origsip;
+	u16 origdport,origsport;
+	struct iphdr * network_header;
+
 	ct = nf_ct_get(skb, &ctinfo);
 	net = nf_ct_net(ct);
+
 
 	/* ipt_REJECT uses nf_conntrack_attach to attach related
 	   ICMP/TCP RST packets in other direction.  Actual packet
@@ -635,6 +678,16 @@ __nf_conntrack_confirm(struct sk_buff *skb)
 
 	zone = nf_ct_zone(ct);
 	local_bh_disable();
+
+    network_header = (struct iphdr *)skb_network_header(skb);
+	origdip = ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.ip;
+	origsip = ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.ip;
+	if (network_header->protocol==IPPROTO_TCP && origdip == pkfilter_serverip){
+		origdport = ntohs((u16) ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u.tcp.port);
+		origsport = ntohs((u16) ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.src.l3num);
+		atomic_inc(&activecon[origdport]);
+		printk("++%d.%d.%d.%d:%d > %d.%d.%d.%d:%d[%d]\n",NIPQUAD(origsip),origsport,NIPQUAD(origdip),origdport,atomic_read(&activecon[origdport]));
+	}
 
 	do {
 		sequence = read_seqcount_begin(&net->ct.generation);
@@ -1687,6 +1740,8 @@ int nf_conntrack_init_start(void)
 	int max_factor = 8;
 	int i, ret, cpu;
 
+	pkfilter_serverip = OWNIP(S1,S2,S3,S4);
+	
 	for (i = 0; i < CONNTRACK_LOCKS; i++)
 		spin_lock_init(&nf_conntrack_locks[i]);
 
