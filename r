@@ -8,7 +8,6 @@ rmmod ipt_MASQUERADE
 rmmod nf_nat_masquerade_ipv4
 rmmod iptable_filter
 rmmod ipt_REJECT
-rmmod iptable_filter
 rmmod iptable_nat
 rmmod ip_tables
 
