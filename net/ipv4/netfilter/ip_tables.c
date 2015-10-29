@@ -35,9 +35,9 @@ MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Netfilter Core Team <coreteam@netfilter.org>");
 MODULE_DESCRIPTION("IPv4 packet filter");
 
-/*#define DEBUG_IP_FIREWALL*/
-/*#define DEBUG_ALLOW_ALL*/ /* Useful for remote debugging */
-/*#define DEBUG_IP_FIREWALL_USER*/
+#define DEBUG_IP_FIREWALL
+#define DEBUG_ALLOW_ALL /* Useful for remote debugging */
+#define DEBUG_IP_FIREWALL_USER
 
 #ifdef DEBUG_IP_FIREWALL
 #define dprintf(format, args...) pr_info(format , ## args)
@@ -1191,7 +1191,7 @@ __do_replace(struct net *net, const char *name, unsigned int valid_hooks,
 		ret = -ENOMEM;
 		goto out;
 	}
-
+printk("table: %s\n",name);
 	t = try_then_request_module(xt_find_table_lock(net, AF_INET, name),
 				    "iptable_%s", name);
 	if (IS_ERR_OR_NULL(t)) {

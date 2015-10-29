@@ -54,6 +54,8 @@
 #include <net/netfilter/nf_nat_helper.h>
 
 #define NF_CONNTRACK_VERSION	"0.5.0"
+char activcon[65536];
+EXPORT_SYMBOL(activcon);
 
 int (*nfnetlink_parse_nat_setup_hook)(struct nf_conn *ct,
 				      enum nf_nat_manip_type manip,
