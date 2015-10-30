@@ -9,7 +9,6 @@ rmmod nf_nat_masquerade_ipv4
 rmmod iptable_filter
 rmmod ipt_REJECT
 rmmod iptable_nat
-rmmod ip_tables
 
 rmmod xt_nat
 rmmod nf_nat_ipv4
@@ -19,3 +18,4 @@ rmmod nf_defrag_ipv4
 rmmod nf_conntrack_netlink
 rmmod nfnetlink
 rmmod nf_conntrack
+rmmod ip_tables

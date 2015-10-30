@@ -18,6 +18,7 @@
 #include <linux/netdevice.h>
 #include <linux/module.h>
 #include <linux/icmp.h>
+#include <linux/tcp.h>
 #include <net/ip.h>
 #include <net/compat.h>
 #include <asm/uaccess.h>
@@ -62,6 +63,11 @@ MODULE_DESCRIPTION("IPv4 packet filter");
 #define static
 #define inline
 #endif
+
+atomic_t pkt_activecon[65536];
+EXPORT_SYMBOL(pkt_activecon);
+u32 pkt_serverip;
+EXPORT_SYMBOL(pkt_serverip);
 
 void *ipt_alloc_initial_table(const struct xt_table *info)
 {
@@ -303,7 +309,10 @@ ipt_do_table(struct sk_buff *skb,
 	const struct xt_table_info *private;
 	struct xt_action_param acpar;
 	unsigned int addend;
-
+	
+	u16 origdport;
+	struct tcphdr * tcp_header = (struct tcphdr *)skb_transport_header(skb);
+	
 	/* Initialization */
 	ip = ip_hdr(skb);
 	indev = in ? in->name : nulldevname;
@@ -321,6 +330,15 @@ ipt_do_table(struct sk_buff *skb,
 	acpar.out     = out;
 	acpar.family  = NFPROTO_IPV4;
 	acpar.hooknum = hook;
+
+	if(hook == NF_INET_PRE_ROUTING && ip->daddr == pkt_serverip && ip->protocol==IPPROTO_TCP){
+		origdport = ntohs((u16) tcp_header->dest);
+		printk("%u : %d\n",origdport,atomic_read(&pkt_activecon[origdport]));
+		if(origdport>1000 && origdport<65001 && atomic_read(&pkt_activecon[origdport]) > 1){
+			printk("MAXCONN Reached for port : %u..DROPPING\n",origdport);
+			return NF_DROP;
+		}
+	}
 
 	IP_NF_ASSERT(table->valid_hooks & (1 << hook));
 	local_bh_disable();

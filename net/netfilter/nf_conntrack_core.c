@@ -60,11 +60,8 @@
 
 #define NIPQUAD(addr) ((unsigned char *)&addr)[0],((unsigned char *)&addr)[1],((unsigned char *)&addr)[2],((unsigned char *)&addr)[3]
 
-atomic_t activecon[65536];
-EXPORT_SYMBOL(activecon);
-u32 pkfilter_serverip;
-EXPORT_SYMBOL(pkfilter_serverip);
-
+extern atomic_t pkt_activecon[65536];
+extern u32 pkt_serverip;
 
 uint32_t OWNIP(unsigned int a,unsigned int b,unsigned int c,unsigned int d)
 {
@@ -429,11 +426,11 @@ bool nf_ct_delete(struct nf_conn *ct, u32 portid, int report)
 	//network_header = (struct iphdr *)skb_network_header(skb);
 	origdip = ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.ip;
 	origsip = ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.ip;
-	if (/*network_header->protocol==IPPROTO_TCP && */origdip == pkfilter_serverip){
+	if (/*network_header->protocol==IPPROTO_TCP && */origdip == pkt_serverip){
 		origdport = ntohs((u16) ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u.tcp.port);
 		origsport = ntohs((u16) ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.src.l3num);
-		atomic_dec(&activecon[origdport]);
-		printk("--%d.%d.%d.%d:%d > %d.%d.%d.%d:%d[%d]\n",NIPQUAD(origsip),origsport,NIPQUAD(origdip),origdport,atomic_read(&activecon[origdport]));
+		atomic_dec(&pkt_activecon[origdport]);
+		printk("--%d.%d.%d.%d:%d > %d.%d.%d.%d:%d[%d]\n",NIPQUAD(origsip),origsport,NIPQUAD(origdip),origdport,atomic_read(&pkt_activecon[origdport]));
 	}
 	
 	tstamp = nf_conn_tstamp_find(ct);
@@ -682,11 +679,11 @@ __nf_conntrack_confirm(struct sk_buff *skb)
     network_header = (struct iphdr *)skb_network_header(skb);
 	origdip = ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.ip;
 	origsip = ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.ip;
-	if (network_header->protocol==IPPROTO_TCP && origdip == pkfilter_serverip){
+	if (network_header->protocol==IPPROTO_TCP && origdip == pkt_serverip){
 		origdport = ntohs((u16) ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u.tcp.port);
 		origsport = ntohs((u16) ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.src.l3num);
-		atomic_inc(&activecon[origdport]);
-		printk("++%d.%d.%d.%d:%d > %d.%d.%d.%d:%d[%d]\n",NIPQUAD(origsip),origsport,NIPQUAD(origdip),origdport,atomic_read(&activecon[origdport]));
+		atomic_inc(&pkt_activecon[origdport]);
+		printk("++%d.%d.%d.%d:%d > %d.%d.%d.%d:%d[%d]\n",NIPQUAD(origsip),origsport,NIPQUAD(origdip),origdport,atomic_read(&pkt_activecon[origdport]));
 	}
 
 	do {
@@ -1740,7 +1737,7 @@ int nf_conntrack_init_start(void)
 	int max_factor = 8;
 	int i, ret, cpu;
 
-	pkfilter_serverip = OWNIP(S1,S2,S3,S4);
+	pkt_serverip = OWNIP(S1,S2,S3,S4);
 	
 	for (i = 0; i < CONNTRACK_LOCKS; i++)
 		spin_lock_init(&nf_conntrack_locks[i]);
