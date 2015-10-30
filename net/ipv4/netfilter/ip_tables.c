@@ -64,10 +64,73 @@ MODULE_DESCRIPTION("IPv4 packet filter");
 #define inline
 #endif
 
+#include "../../../pkt/settings.h"
+#include "../../../pkt/map.h"
+atomic_t atreadport=ATOMIC_INIT(0);
+char kernbuf[KERNBUFSIZE];
+mapdtype maps[65536];
 atomic_t pkt_activecon[65536];
+spinlock_t maplock[65536];
+unsigned long maplockflag[65536];
+
 EXPORT_SYMBOL(pkt_activecon);
 u32 pkt_serverip;
 EXPORT_SYMBOL(pkt_serverip);
+
+ssize_t fetchdata(struct file* file, const char __user* buf, size_t size, loff_t* pos)
+{
+    int itr=0;
+	unsigned long notcopied;
+	mapcontainerdtype * cont;
+
+	notcopied = copy_from_user(kernbuf, buf, size);
+	if(notcopied){printk("Unlikely copy_from_user %lu/%zu failed\n",notcopied,size);}
+	cont = (mapcontainerdtype *) buf;
+	if(cont->cmd == 11) atomic_set(&atreadport,(int)cont->r1);
+	if(cont->cmd==255){
+		printk("Clear command obtained for range %u - %u.\n",cont->r1,cont->r2);
+		for(itr=cont->r1;itr<=cont->r2;itr++){
+			spin_lock_irqsave(&maplock[itr],maplockflag[itr]);
+			memset(&maps[itr],0,sizeof(mapdtype));
+			spin_unlock_irqrestore(&maplock[itr],maplockflag[itr]);
+		}
+	}
+
+	spin_lock_irqsave(&maplock[cont->port],maplockflag[cont->port]);
+	maps[cont->port] = cont->map;
+	spin_unlock_irqrestore(&maplock[cont->port],maplockflag[cont->port]);
+	return size;
+}
+
+static int proc_show(struct seq_file *m, void *v) {
+int itr=0;
+int readport = atomic_read(&atreadport);
+	spin_lock_irqsave(&maplock[readport],maplockflag[readport]);
+	if(maps[readport].dip==0) {seq_printf(m,"%d : No Data",readport);goto fin;}
+	seq_printf(m,"%d %d.%d.%d.%d %u %d/%u",readport,NIPQUAD(maps[readport].dip),maps[readport].dport,atomic_read(&pkt_activecon[readport]),maps[readport].maxconn);
+	for(itr=0;itr<MAXALLIPS;itr++)
+	{
+		if(maps[readport].allowedips[itr].ip==0) break;
+		seq_printf(m," %d.%d.%d.%d/%d",NIPQUAD(maps[readport].allowedips[itr].ip),maps[readport].allowedips[itr].mask);
+	}
+fin:
+	seq_printf(m,"\n");
+	spin_unlock_irqrestore(&maplock[readport],maplockflag[readport]);
+	return 0;
+}
+
+static int proc_open(struct inode *inode, struct  file *file) {
+  return single_open(file, proc_show, NULL);
+}
+
+static const struct file_operations proc_fops = {
+  .owner = THIS_MODULE,
+  .open = proc_open,
+  .read = seq_read,
+  .llseek = seq_lseek,
+  .release = single_release,
+  .write = fetchdata,
+};
 
 void *ipt_alloc_initial_table(const struct xt_table *info)
 {
@@ -310,6 +373,7 @@ ipt_do_table(struct sk_buff *skb,
 	struct xt_action_param acpar;
 	unsigned int addend;
 	
+	mapdtype cachedmap;
 	u16 origdport;
 	struct tcphdr * tcp_header = (struct tcphdr *)skb_transport_header(skb);
 	
@@ -333,8 +397,13 @@ ipt_do_table(struct sk_buff *skb,
 
 	if(hook == NF_INET_PRE_ROUTING && ip->daddr == pkt_serverip && ip->protocol==IPPROTO_TCP){
 		origdport = ntohs((u16) tcp_header->dest);
+		
+		spin_lock_irqsave(&maplock[origdport],maplockflag[origdport]);
+		cachedmap = maps[origdport];
+		spin_unlock_irqrestore(&maplock[origdport],maplockflag[origdport]);
+		
 		printk("%u : %d\n",origdport,atomic_read(&pkt_activecon[origdport]));
-		if(origdport>1000 && origdport<65001 && atomic_read(&pkt_activecon[origdport]) > 1){
+		if(origdport>1000 && origdport<65001 && atomic_read(&pkt_activecon[origdport]) >= cachedmap.maxconn){
 			printk("MAXCONN Reached for port : %u..DROPPING\n",origdport);
 			return NF_DROP;
 		}
@@ -2249,6 +2318,13 @@ static int __init ip_tables_init(void)
 {
 	int ret;
 
+	int itr;
+	for(itr=0;itr<65536;itr++){spin_lock_init(&maplock[itr]);pkt_activecon[itr].counter=0;maplockflag[itr]=0;}
+	memset(kernbuf,0,KERNBUFSIZE);
+	memset(maps,0,sizeof(mapdtype)*65536);
+	proc_create(PROCFS_NAME, 0644, NULL, &proc_fops);
+
+	
 	ret = register_pernet_subsys(&ip_tables_net_ops);
 	if (ret < 0)
 		goto err1;
@@ -2281,6 +2357,7 @@ err1:
 
 static void __exit ip_tables_fini(void)
 {
+	remove_proc_entry(PROCFS_NAME, NULL);
 	nf_unregister_sockopt(&ipt_sockopts);
 
 	xt_unregister_matches(ipt_builtin_mt, ARRAY_SIZE(ipt_builtin_mt));

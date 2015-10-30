@@ -3,8 +3,8 @@
 #include <string.h>
 #include <inttypes.h>
 #include <stdbool.h>
-#include "../mod/settings.h"
-#include "../mod/map.h"
+#include "../pkt/settings.h"
+#include "../pkt/map.h"
 #ifdef PKDEBUG
 #define d(...) printf(__VA_ARGS__)
 #else
@@ -83,7 +83,6 @@ int main (int argc, char *argv[])
            cont.map.dip = ipholder;
            cont.map.dport = atoi(lineargv[2]);
            cont.map.maxconn = atoi(lineargv[3]);
-           cont.map.allowall = atoi(lineargv[4]);
            if(lineargc>5){
                 for (i=5; i< lineargc; i++) {
                     strtoip(lineargv[i],&ipholder,&maskholder);

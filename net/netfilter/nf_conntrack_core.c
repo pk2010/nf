@@ -56,9 +56,8 @@
 #define NF_CONNTRACK_VERSION	"0.5.0"
 
 #include <linux/ip.h>
-#include "interface.h"
-
-#define NIPQUAD(addr) ((unsigned char *)&addr)[0],((unsigned char *)&addr)[1],((unsigned char *)&addr)[2],((unsigned char *)&addr)[3]
+#include "../../pkt/settings.h"
+#include "../../pkt/interface.h"
 
 extern atomic_t pkt_activecon[65536];
 extern u32 pkt_serverip;
@@ -421,7 +420,6 @@ bool nf_ct_delete(struct nf_conn *ct, u32 portid, int report)
 
 	u32 origdip,origsip;
 	u16 origdport,origsport;
-	struct iphdr * network_header;
 
 	//network_header = (struct iphdr *)skb_network_header(skb);
 	origdip = ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.ip;
