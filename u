@@ -1,0 +1,17 @@
+#!/bin/bash
+ker=`uname -r`
+if [ -L "/usr/lib/modules/$ker/kernel/net/netfilter" ]; then
+  rm -f /usr/lib/modules/$ker/kernel/net/netfilter;
+fi
+
+if [ -d "/usr/lib/modules/$ker/kernel/net/netfilter_bck" ]; then
+  mv /usr/lib/modules/$ker/kernel/net/netfilter_bck /usr/lib/modules/$ker/kernel/net/netfilter
+fi
+
+if [ -L "/usr/lib/modules/$ker/kernel/net/ipv4/netfilter" ]; then
+  rm -f /usr/lib/modules/$ker/kernel/net/ipv4/netfilter;
+fi
+
+if [ -d "/usr/lib/modules/$ker/kernel/net/ipv4/netfilter_bck" ]; then
+  mv /usr/lib/modules/$ker/kernel/net/ipv4/netfilter_bck /usr/lib/modules/$ker/kernel/net/ipv4/netfilter
+fi
