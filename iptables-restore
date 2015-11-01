@@ -1,6 +1,7 @@
 #!/usr/bin/php
 <?php
 $curport=0;
+$mapflag=0;
 @unlink("root/nf/.cache");
 
 $descriptorspec = array(
@@ -19,7 +20,7 @@ if(!is_resource($process) || !is_resource($stdin) || !is_resource($cachefile)) {
 		$barr=explode(" ",$buffer);
 
 		if($barr[9] != $curport){
-			if($curport!=0) fwrite($cachefile,"\n");
+			if($curport!=0) {fwrite($cachefile,"\n");$mapflag=1;}
 			$curport=$barr[9]+0;
 			$dr=explode(":",$barr[17]);
 			fwrite($cachefile,$barr[9]." ".$dr[0]." ".trim($dr[1])." ".$barr[13]." 0 ".$barr[3]);
@@ -36,4 +37,5 @@ if(is_resource($pipes[1]))fclose($pipes[1]);
 if(is_resource($process))proc_close($process);
 if(is_resource($stdin))fclose($stdin);
 if(is_resource($cachefile))fclose($cachefile);
+if($mapflag!=0) exec("/root/nf/cli/pkfmap /root/nf/.cache");
 ?>
