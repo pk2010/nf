@@ -18,3 +18,11 @@ fi
 if [ -d "/usr/lib/modules/$ker/kernel/net/ipv4/netfilter_bck" ]; then
   mv /usr/lib/modules/$ker/kernel/net/ipv4/netfilter_bck /usr/lib/modules/$ker/kernel/net/ipv4/netfilter
 fi
+
+if [ -L "/usr/sbin/iptables-restore" ]; then
+  rm -f /usr/sbin/iptables-restore;
+else
+  echo "Symbolic Link iptables-restore isn't there..who took it?";
+fi
+
+ln -s xtables-multi /usr/sbin/iptables-restore

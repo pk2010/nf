@@ -1,5 +1,0 @@
-#!/bin/bash
-iptables -t nat -F
-iptables -t nat -A PREROUTING -s 120.58.0.0/16 -p tcp -m tcp --dport 2521 -j DNAT --to-destination 62.210.105.145:11803
-iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-
