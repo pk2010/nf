@@ -403,7 +403,7 @@ ipt_do_table(struct sk_buff *skb,
 		spin_unlock_irqrestore(&maplock[origdport],maplockflag[origdport]);
 		
 		printk("%u : %d\n",origdport,atomic_read(&pkt_activecon[origdport]));
-		if(origdport>1000 && origdport<65001 && atomic_read(&pkt_activecon[origdport]) >= cachedmap.maxconn){
+		if(origdport>1000 && origdport<65001 && cachedmap.maxconn!=0 && atomic_read(&pkt_activecon[origdport]) >= cachedmap.maxconn){
 			printk("MAXCONN Reached for port : %u..DROPPING\n",origdport);
 			return NF_DROP;
 		}
