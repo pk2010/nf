@@ -57,25 +57,9 @@
 
 #include <linux/ip.h>
 #include "../../pkt/settings.h"
-#include "../../pkt/interface.h"
 
 extern atomic_t pkt_activecon[65536];
 extern u32 pkt_serverip;
-
-uint32_t OWNIP(unsigned int a,unsigned int b,unsigned int c,unsigned int d)
-{
-//struct net_device *device;
-//struct in_device *in_dev;
-//struct in_ifaddr *if_info;
-//	uint32_t *pa;
-//	device = dev_get_by_name(&init_net,GUESSINTERFACE);
-//	in_dev = (struct in_device *)device->ip_ptr;
-//	if_info = in_dev->ifa_list;
-//	pa = &if_info->ifa_local;
-//	return *pa;
-	return (a+(b*256)+(c*65536)+(d*16777216U));
-}
-
 
 int (*nfnetlink_parse_nat_setup_hook)(struct nf_conn *ct,
 				      enum nf_nat_manip_type manip,
@@ -1735,8 +1719,6 @@ int nf_conntrack_init_start(void)
 	int max_factor = 8;
 	int i, ret, cpu;
 
-	pkt_serverip = OWNIP(S1,S2,S3,S4);
-	
 	for (i = 0; i < CONNTRACK_LOCKS; i++)
 		spin_lock_init(&nf_conntrack_locks[i]);
 

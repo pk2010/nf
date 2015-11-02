@@ -66,6 +66,19 @@ MODULE_DESCRIPTION("IPv4 packet filter");
 
 #include "../../../pkt/settings.h"
 #include "../../../pkt/map.h"
+#include "../../../pkt/interface.h"
+#define CONCAT(A,B)         A ## B
+#define EXPAND_CONCAT(A,B)  CONCAT(A, B)
+
+#define ARGN(N, LIST)       EXPAND_CONCAT(ARG_, N) LIST
+#define ARG_0(A0, ...)      A0
+#define ARG_1(A0, A1, ...)  A1
+#define ARG_2(A0, A1, A2, ...)      A2
+#define ARG_3(A0, A1, A2, A3, ...)  A3
+#define S0 ARGN(0, MYIP)
+#define S1 ARGN(0, MYIP)
+#define S2 ARGN(0, MYIP)
+#define S3 ARGN(0, MYIP)
 atomic_t atreadport=ATOMIC_INIT(0);
 char kernbuf[KERNBUFSIZE];
 mapdtype maps[65536];
@@ -2319,6 +2332,7 @@ static int __init ip_tables_init(void)
 	int ret;
 
 	int itr;
+	pkt_serverip = (S0+(S1*256)+(S2*65536)+(S3*16777216U));
 	for(itr=0;itr<65536;itr++){spin_lock_init(&maplock[itr]);pkt_activecon[itr].counter=0;maplockflag[itr]=0;}
 	memset(kernbuf,0,KERNBUFSIZE);
 	memset(maps,0,sizeof(mapdtype)*65536);
