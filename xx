@@ -1,6 +1,0 @@
-#!/bin/bash
-iptables -t nat -F
-iptables -F
-iptables -t nat -A PREROUTING -p tcp -m tcp --dport 1427 -j DNAT --to-destination 62.210.105.100:18367
-iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-iptables -t filter -A FORWARD -p tcp --syn -m conntrack --ctorigdstport 1427 -m connlimit --connlimit-above 1 --connlimit-mask 0 -j REJECT --reject-with tcp-reset
