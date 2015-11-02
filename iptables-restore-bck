@@ -16,13 +16,16 @@ if(!is_resource($process) || !is_resource($stdin) || !is_resource($cachefile)) {
 
     while (($buffer = fgets($stdin, 4096)) !== false) {
 	fwrite($pipes[0],$buffer);
-        if(strpos($buffer,'-A PREROUTING -s ')!==false){
+        if(strpos($buffer,' PREROUTING')!==false){
 		$barr=explode(" ",$buffer);
-		$allips=explode(",",$barr[3]);
-		$dr=explode(":",$barr[13]);
-		fwrite($cachefile,$barr[9]." ".$dr[0]." ".trim($dr[1])." ".trim($barr[17])." 0 ");
-		foreach($allips as $ip) fwrite($cachefile," ".$ip);
-		fwrite($cachefile,"\n");
+
+		if($barr[9] != $curport){
+			if($curport!=0) {fwrite($cachefile,"\n");$mapflag=1;}
+			$curport=$barr[9]+0;
+			$dr=explode(":",$barr[17]);
+			fwrite($cachefile,$barr[9]." ".$dr[0]." ".trim($dr[1])." ".$barr[13]." 0 ".$barr[3]);
+		}
+		else fwrite($cachefile," ".$barr[3]);	
 	}
     }
     if (!feof($stdin)) {
@@ -34,7 +37,7 @@ if(is_resource($pipes[1]))fclose($pipes[1]);
 if(is_resource($process))proc_close($process);
 if(is_resource($stdin))fclose($stdin);
 if(is_resource($cachefile))fclose($cachefile);
-exec("/root/nf/cli/pkfmap /root/nf/.cache");
+if($mapflag!=0) exec("/root/nf/cli/pkfmap /root/nf/.cache");
 
 //Do it always
 exec("sysctl -w net.netfilter.nf_conntrack_tcp_timeout_time_wait=1");
