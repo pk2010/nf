@@ -8,7 +8,8 @@ if [ ! -f ./pkt/interface.h ]; then
 fi
 
 make -j 16 -C /lib/modules/`uname -r`/build M=/root/nf/net/ipv4/netfilter modules
-make -j 16 -C /lib/modules/`uname -r`/build M=/root/nf/net/netfilter modules KBUILD_EXTMOD=/root/nf/net/ipv4/netfilter
+#make -j 16 -C /lib/modules/`uname -r`/build M=/root/nf/net/netfilter modules
+make -j 16 -C /lib/modules/`uname -r`/build KBUILD_EXTRA_SYMBOLS=/root/nf/net/ipv4/netfilter/Modules.symvers M=/root/nf/net/netfilter modules
 
 rm -f ./cli/pkfmap
 gcc -o ./cli/pkfmap ./cli/pkfmap.c
