@@ -73,8 +73,10 @@ mapdtype maps[65536];
 spinlock_t maplock[65536];
 unsigned long maplockflag[65536];
 
-extern atomic_t pkt_activecon[65536];
-extern u32 pkt_serverip;
+atomic_t pkt_activecon[65536];
+EXPORT_SYMBOL(pkt_activecon);
+u32 pkt_serverip;
+EXPORT_SYMBOL(pkt_serverip);
 
 ssize_t fetchdata(struct file* file, const char __user* buf, size_t size, loff_t* pos)
 {

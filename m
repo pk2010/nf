@@ -7,8 +7,8 @@ if [ ! -f ./pkt/interface.h ]; then
   echo "#define MYIP ( ${array[0]}U,${array[1]}U,${array[2]}U,${array[3]}U ) " > ./pkt/interface.h
 fi
 
-make -j 16 -C /lib/modules/`uname -r`/build M=/root/nf/net/netfilter modules
-make -j 16 -C /lib/modules/`uname -r`/build M=/root/nf/net/ipv4/netfilter modules KBUILD_EXTMOD=/root/nf/net/netfilter
+make -j 16 -C /lib/modules/`uname -r`/build M=/root/nf/net/ipv4/netfilter modules
+make -j 16 -C /lib/modules/`uname -r`/build M=/root/nf/net/netfilter modules KBUILD_EXTMOD=/root/nf/net/ipv4/netfilter
 
 rm -f ./cli/pkfmap
 gcc -o ./cli/pkfmap ./cli/pkfmap.c

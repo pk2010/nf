@@ -70,11 +70,8 @@
 #define S2 ARGN(0, MYIP)
 #define S3 ARGN(0, MYIP)
 
-atomic_t pkt_activecon[65536];
-EXPORT_SYMBOL(pkt_activecon);
-u32 pkt_serverip;
-EXPORT_SYMBOL(pkt_serverip);
-
+extern atomic_t pkt_activecon[65536];
+extern u32 pkt_serverip;
 
 int (*nfnetlink_parse_nat_setup_hook)(struct nf_conn *ct,
 				      enum nf_nat_manip_type manip,
