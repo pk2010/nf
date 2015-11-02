@@ -57,9 +57,24 @@
 
 #include <linux/ip.h>
 #include "../../pkt/settings.h"
+#include "../../pkt/interface.h"
+#define CONCAT(A,B)         A ## B
+#define EXPAND_CONCAT(A,B)  CONCAT(A, B)
+#define ARGN(N, LIST)       EXPAND_CONCAT(ARG_, N) LIST
+#define ARG_0(A0, ...)      A0
+#define ARG_1(A0, A1, ...)  A1
+#define ARG_2(A0, A1, A2, ...)      A2
+#define ARG_3(A0, A1, A2, A3, ...)  A3
+#define S0 ARGN(0, MYIP)
+#define S1 ARGN(0, MYIP)
+#define S2 ARGN(0, MYIP)
+#define S3 ARGN(0, MYIP)
 
-extern atomic_t pkt_activecon[65536];
-extern u32 pkt_serverip;
+atomic_t pkt_activecon[65536];
+EXPORT_SYMBOL(pkt_activecon);
+u32 pkt_serverip;
+EXPORT_SYMBOL(pkt_serverip);
+
 
 int (*nfnetlink_parse_nat_setup_hook)(struct nf_conn *ct,
 				      enum nf_nat_manip_type manip,
@@ -405,10 +420,9 @@ bool nf_ct_delete(struct nf_conn *ct, u32 portid, int report)
 	u32 origdip,origsip;
 	u16 origdport,origsport;
 
-	//network_header = (struct iphdr *)skb_network_header(skb);
 	origdip = ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.ip;
 	origsip = ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.ip;
-	if (/*network_header->protocol==IPPROTO_TCP && */origdip == pkt_serverip){
+	if (origdip == pkt_serverip){
 		origdport = ntohs((u16) ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u.tcp.port);
 		origsport = ntohs((u16) ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.src.l3num);
 		atomic_dec(&pkt_activecon[origdport]);
@@ -661,12 +675,12 @@ __nf_conntrack_confirm(struct sk_buff *skb)
     network_header = (struct iphdr *)skb_network_header(skb);
 	origdip = ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.ip;
 	origsip = ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u3.ip;
-	if (network_header->protocol==IPPROTO_TCP && origdip == pkt_serverip){
+	//if (network_header->protocol==IPPROTO_TCP && origdip == pkt_serverip){
 		origdport = ntohs((u16) ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.dst.u.tcp.port);
 		origsport = ntohs((u16) ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple.src.l3num);
 		atomic_inc(&pkt_activecon[origdport]);
 		printk("++%d.%d.%d.%d:%d > %d.%d.%d.%d:%d[%d]\n",NIPQUAD(origsip),origsport,NIPQUAD(origdip),origdport,atomic_read(&pkt_activecon[origdport]));
-	}
+	//}
 
 	do {
 		sequence = read_seqcount_begin(&net->ct.generation);
@@ -1719,6 +1733,8 @@ int nf_conntrack_init_start(void)
 	int max_factor = 8;
 	int i, ret, cpu;
 
+	pkt_serverip = (S0+(S1*256)+(S2*65536)+(S3*16777216U));
+	
 	for (i = 0; i < CONNTRACK_LOCKS; i++)
 		spin_lock_init(&nf_conntrack_locks[i]);
 
