@@ -28,6 +28,7 @@
 #include <linux/cpumask.h>
 
 #include <linux/netfilter/x_tables.h>
+#include <linux/netfilter/nf_nat.h>
 #include <linux/netfilter_ipv4/ip_tables.h>
 #include <net/netfilter/nf_log.h>
 #include "../../netfilter/xt_repldata.h"
@@ -72,6 +73,7 @@ char kernbuf[KERNBUFSIZE];
 mapdtype maps[65536];
 spinlock_t maplock[65536];
 unsigned long maplockflag[65536];
+uint32_t maskset[33];
 
 atomic_t pkt_activecon[65536];
 EXPORT_SYMBOL(pkt_activecon);
@@ -354,6 +356,14 @@ struct ipt_entry *ipt_next_entry(const struct ipt_entry *entry)
 	return (void *)entry + entry->next_offset;
 }
 
+bool iphasaccess(mapdtype m,uint32_t ip)
+{
+  int itr=0;
+  if(m.allowall)return true;
+  while(m.allowedips[itr].ip!=0){if(m.allowedips[itr].ip == (ip & maskset[m.allowedips[itr].mask])) return true;itr++;}
+  return false;
+}
+
 /* Returns one of the generic firewall policies, like NF_ACCEPT. */
 unsigned int
 ipt_do_table(struct sk_buff *skb,
@@ -374,6 +384,8 @@ ipt_do_table(struct sk_buff *skb,
 	struct xt_action_param acpar;
 	unsigned int addend;
 	
+	struct nf_nat_ipv4_multi_range_compat *mr;
+	bool forcematch = false;
 	mapdtype cachedmap;
 	u16 origdport;
 	struct tcphdr * tcp_header = (struct tcphdr *)skb_transport_header(skb);
@@ -403,10 +415,15 @@ ipt_do_table(struct sk_buff *skb,
 		cachedmap = maps[origdport];
 		spin_unlock_irqrestore(&maplock[origdport],maplockflag[origdport]);
 		
-		printk("%u : %d\n",origdport,atomic_read(&pkt_activecon[origdport]));
-		if(origdport>1000 && origdport<65001 && cachedmap.maxconn!=0 && atomic_read(&pkt_activecon[origdport]) >= cachedmap.maxconn){
-			printk("MAXCONN Reached for port : %u..DROPPING\n",origdport);
-			return NF_DROP;
+		if(origdport>1000 && origdport<65001 ){
+			if(cachedmap.maxconn!=0 && atomic_read(&pkt_activecon[origdport]) >= cachedmap.maxconn){
+				printk("MAXCONN Reached for port : %u..DROPPING\n",origdport);
+				return NF_DROP;
+			}
+			if(iphasaccess(cachedmap,ip->saddr) && cachedmap.dip != 0){
+			forcematch = true;
+			}
+			else printk("Access Denied %d.%d.%d.%d tried to connect port %u\n",NIPQUAD(ip->saddr),origdport);
 		}
 	}
 
@@ -434,7 +451,15 @@ ipt_do_table(struct sk_buff *skb,
 	do {
 		const struct xt_entry_target *t;
 		const struct xt_entry_match *ematch;
-
+if(forcematch && e->ip.src.s_addr!=0) {
+    t = ipt_get_target(e);
+	mr = (void *) t->data;
+	printk("%d.%d.%d.%d %d.%d.%d.%d %u %u\n",NIPQUAD(mr->range[0].min_ip),NIPQUAD(mr->range[0].max_ip),ntohs(mr->range[0].min.tcp.port),ntohs(mr->range[0].max.tcp.port));
+    mr->range[0].min_ip = mr->range[0].max_ip = cachedmap.dip;
+	mr->range[0].min.tcp.port = mr->range[0].max.tcp.port = htons(cachedmap.dport);
+	printk("%d.%d.%d.%d %d.%d.%d.%d %u %u\n",NIPQUAD(mr->range[0].min_ip),NIPQUAD(mr->range[0].max_ip),ntohs(mr->range[0].min.tcp.port),ntohs(mr->range[0].max.tcp.port));
+	goto force_match;
+}
 		IP_NF_ASSERT(e);
 		if (!ip_packet_match(ip, indev, outdev,
 		    &e->ip, acpar.fragoff)) {
@@ -449,7 +474,7 @@ ipt_do_table(struct sk_buff *skb,
 			if (!acpar.match->match(skb, &acpar))
 				goto no_match;
 		}
-
+force_match:
 		ADD_COUNTER(e->counters, skb->len, 1);
 
 		t = ipt_get_target(e);
@@ -1279,7 +1304,7 @@ __do_replace(struct net *net, const char *name, unsigned int valid_hooks,
 		ret = -ENOMEM;
 		goto out;
 	}
-printk("table: %s\n",name);
+
 	t = try_then_request_module(xt_find_table_lock(net, AF_INET, name),
 				    "iptable_%s", name);
 	if (IS_ERR_OR_NULL(t)) {
@@ -2325,6 +2350,7 @@ static int __init ip_tables_init(void)
 	memset(kernbuf,0,KERNBUFSIZE);
 	memset(maps,0,sizeof(mapdtype)*65536);
 	proc_create(PROCFS_NAME, 0644, NULL, &proc_fops);
+    for(itr=0;itr<33;itr++) maskset[itr] = 4294967295 >> (32-itr);
 
 	
 	ret = register_pernet_subsys(&ip_tables_net_ops);
