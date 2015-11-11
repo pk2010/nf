@@ -19,3 +19,4 @@ rmmod nf_conntrack_netlink
 rmmod nfnetlink
 rmmod nf_conntrack
 rmmod ip_tables
+rmmod xt_comment
