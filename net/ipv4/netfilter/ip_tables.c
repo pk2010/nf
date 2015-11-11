@@ -91,7 +91,7 @@ ssize_t fetchdata(struct file* file, const char __user* buf, size_t size, loff_t
 	cont = (mapcontainerdtype *) buf;
 	if(cont->cmd == 11) atomic_set(&atreadport,(int)cont->r1);
 	if(cont->cmd==255){
-		printk("Clear command obtained for range %u - %u.\n",cont->r1,cont->r2);
+		//printk("Clear command obtained for range %u - %u.\n",cont->r1,cont->r2);
 		for(itr=cont->r1;itr<=cont->r2;itr++){
 			spin_lock_irqsave(&maplock[itr],maplockflag[itr]);
 			memset(&maps[itr],0,sizeof(mapdtype));
@@ -110,7 +110,7 @@ int itr=0;
 int readport = atomic_read(&atreadport);
 	spin_lock_irqsave(&maplock[readport],maplockflag[readport]);
 	if(maps[readport].dip==0) {seq_printf(m,"%d : No Data",readport);goto fin;}
-	seq_printf(m,"%d %d.%d.%d.%d:%u %d/%u",readport,NIPQUAD(maps[readport].dip),maps[readport].dport,atomic_read(&pkt_activecon[readport]),maps[readport].maxconn);
+	seq_printf(m,"%d %d.%d.%d.%d %u %d/%u",readport,NIPQUAD(maps[readport].dip),maps[readport].dport,atomic_read(&pkt_activecon[readport]),maps[readport].maxconn);
 	for(itr=0;itr<MAXALLIPS;itr++)
 	{
 		if(maps[readport].allowedips[itr].ip==0) break;
@@ -423,7 +423,7 @@ ipt_do_table(struct sk_buff *skb,
 			if(iphasaccess(cachedmap,ip->saddr) && cachedmap.dip != 0){
 			forcematch = true;
 			}
-			else printk("Access Denied %d.%d.%d.%d tried to connect port %u\n",NIPQUAD(ip->saddr),origdport);
+			//else printk("Access Denied %d.%d.%d.%d tried to connect port %u\n",NIPQUAD(ip->saddr),origdport);
 		}
 	}
 
@@ -454,10 +454,10 @@ ipt_do_table(struct sk_buff *skb,
 if(forcematch && e->ip.src.s_addr!=0) {
     t = ipt_get_target(e);
 	mr = (void *) t->data;
-	printk("%d.%d.%d.%d %d.%d.%d.%d %u %u\n",NIPQUAD(mr->range[0].min_ip),NIPQUAD(mr->range[0].max_ip),ntohs(mr->range[0].min.tcp.port),ntohs(mr->range[0].max.tcp.port));
+	//printk("%d.%d.%d.%d %d.%d.%d.%d %u %u\n",NIPQUAD(mr->range[0].min_ip),NIPQUAD(mr->range[0].max_ip),ntohs(mr->range[0].min.tcp.port),ntohs(mr->range[0].max.tcp.port));
     mr->range[0].min_ip = mr->range[0].max_ip = cachedmap.dip;
 	mr->range[0].min.tcp.port = mr->range[0].max.tcp.port = htons(cachedmap.dport);
-	printk("%d.%d.%d.%d %d.%d.%d.%d %u %u\n",NIPQUAD(mr->range[0].min_ip),NIPQUAD(mr->range[0].max_ip),ntohs(mr->range[0].min.tcp.port),ntohs(mr->range[0].max.tcp.port));
+	//printk("%d.%d.%d.%d %d.%d.%d.%d %u %u\n",NIPQUAD(mr->range[0].min_ip),NIPQUAD(mr->range[0].max_ip),ntohs(mr->range[0].min.tcp.port),ntohs(mr->range[0].max.tcp.port));
 	goto force_match;
 }
 		IP_NF_ASSERT(e);
