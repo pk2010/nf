@@ -110,7 +110,7 @@ int itr=0;
 int readport = atomic_read(&atreadport);
 	spin_lock_irqsave(&maplock[readport],maplockflag[readport]);
 	if(maps[readport].dip==0) {seq_printf(m,"%d : No Data",readport);goto fin;}
-	seq_printf(m,"%d %d.%d.%d.%d %u %d/%u",readport,NIPQUAD(maps[readport].dip),maps[readport].dport,atomic_read(&pkt_activecon[readport]),maps[readport].maxconn);
+	seq_printf(m,"%d %d.%d.%d.%d:%u %d/%u",readport,NIPQUAD(maps[readport].dip),maps[readport].dport,atomic_read(&pkt_activecon[readport]),maps[readport].maxconn);
 	for(itr=0;itr<MAXALLIPS;itr++)
 	{
 		if(maps[readport].allowedips[itr].ip==0) break;
