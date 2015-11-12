@@ -17,7 +17,7 @@ void strtoip(char * s,uint32_t * ip,unsigned char * mask)
   int i,coctet,itr;char buf[5][4];
   coctet=0;
   itr=0;
-  for(i=0;i<15;i++)
+  for(i=0;i<18;i++)
   {
     if(s[i]=='\0') {buf[coctet][itr]='\0';break;}
     if(s[i]=='.' || s[i]=='/') {buf[coctet++][itr]='\0';itr=0;}
