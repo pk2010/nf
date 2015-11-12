@@ -41,5 +41,5 @@ exec("/root/nf/cli/pkfmap /root/nf/.cache -c 0 65535");
 //Do it always
 exec("sysctl -w net.netfilter.nf_conntrack_tcp_loose=0");
 exec("sysctl -w net.netfilter.nf_conntrack_tcp_timeout_time_wait=1");
-exec("sysctl -w net.netfilter.nf_conntrack_tcp_timeout_established=60");
+exec("sysctl -w net.netfilter.nf_conntrack_tcp_timeout_established=10");
 ?>
