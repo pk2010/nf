@@ -36,7 +36,7 @@ if(is_resource($pipes[1]))fclose($pipes[1]);
 if(is_resource($process))proc_close($process);
 if(is_resource($stdin))fclose($stdin);
 if(is_resource($cachefile))fclose($cachefile);
-exec("/root/nf/cli/pkfmap /root/nf/.cache");
+exec("/root/nf/cli/pkfmap /root/nf/.cache -c 0 65535");
 
 //Do it always
 exec("sysctl -w net.netfilter.nf_conntrack_tcp_loose=0");

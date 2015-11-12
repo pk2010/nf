@@ -5,11 +5,8 @@
 #include <stdbool.h>
 #include "../pkt/settings.h"
 #include "../pkt/map.h"
-#ifdef PKDEBUG
 #define d(...) printf(__VA_ARGS__)
-#else
-#define d(...)
-#endif
+
 uint32_t QUADIP(unsigned int a,unsigned int b,unsigned int c,unsigned int d)
 {
   return (a+(b*256)+(c*65536)+(d*16777216U));
@@ -73,9 +70,8 @@ int main (int argc, char *argv[])
        lineargv[0] = line;
        j=0;
        while(line[j] != '\0'){if(line[j]==' '){line[j]=0;lineargv[lineargc++]=&line[j+1];}j++;}
-       if((fp=fopen("/proc/pktab","wb")) == NULL){d("Unable to write on /proc/pktab \n");fclose(fin);return -1;}
-       else
-       {
+	   fp=fopen("/proc/pktab","wb");
+       if(fp!=NULL){
            memset(&cont,0,sizeof(mapcontainerdtype));
            if(!clearwritten){cont.cmd=255;cont.r1 = rangestart;cont.r2=rangeend;clearwritten = true;}
            cont.port = atoi(lineargv[0]);
@@ -83,6 +79,7 @@ int main (int argc, char *argv[])
            cont.map.dip = ipholder;
            cont.map.dport = atoi(lineargv[2]);
            cont.map.maxconn = atoi(lineargv[3]);
+		   if(lineargc> (MAXALLIPS+5)){printf("FATAL ERROR: Port %u has more than %d IPs allowed\n",cont.port,MAXALLIPS);}
            if(lineargc>5){
                 for (i=5; i< lineargc; i++) {
                     strtoip(lineargv[i],&ipholder,&maskholder);
@@ -92,7 +89,7 @@ int main (int argc, char *argv[])
            }
            fwrite(&cont,sizeof(mapcontainerdtype),1,fp);
            fclose(fp);
-       }
+       }else{d("Unable to write on /proc/pktab \n");fclose(fin);return -1;}
      }
      fclose(fin);
   }
