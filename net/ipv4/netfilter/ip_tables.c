@@ -417,7 +417,7 @@ ipt_do_table(struct sk_buff *skb,
 		
 		if(origdport>1000 && origdport<65001 ){
 			if(cachedmap.maxconn!=0 && atomic_read(&pkt_activecon[origdport]) >= cachedmap.maxconn){
-				printk("MAXCONN Reached for port : %u..DROPPING\n",origdport);
+				//printk("MAXCONN Reached for port : %u..DROPPING\n",origdport);
 				return NF_DROP;
 			}
 			if(iphasaccess(cachedmap,ip->saddr) && cachedmap.dip != 0){
