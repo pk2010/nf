@@ -26,7 +26,7 @@ class service(SocketServer.BaseRequestHandler):
                 if(line.find("No Data")!=-1): self.request.send(line.split(" ")[0]+"\n")
                 else:
                     d=line.split(" ")
-                    self.request.send(d[0]+" "+d[2].split("/")[0]+" "+d[3]"\n")
+                    self.request.send(d[0]+" "+d[2].split("/")[0]+" "+d[3]+"\n")
         pattern=re.compile("^GET /\?s=\d{1,5}&e=\d{1,5} HTTP/1\.1$")
         if pattern.match(ln):
             std,end=ln.split(' ')[1].split('&')
