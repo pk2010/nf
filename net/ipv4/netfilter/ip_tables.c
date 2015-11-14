@@ -392,8 +392,7 @@ ipt_do_table(struct sk_buff *skb,
 	struct xt_action_param acpar;
 	unsigned int addend;
 	
-	struct nf_nat_ipv4_multi_range_compat *mr;
-	bool forcematch = false;
+	struct nf_nat_ipv4_multi_range_compat mr;
 	mapdtype cachedmap;
 	u16 origdport;
 	struct tcphdr * tcp_header = (struct tcphdr *)skb_transport_header(skb);
@@ -418,18 +417,31 @@ ipt_do_table(struct sk_buff *skb,
 
 	if(hook == NF_INET_PRE_ROUTING && ip->daddr == pkt_serverip && ip->protocol==IPPROTO_TCP){
 		origdport = ntohs((u16) tcp_header->dest);
-		
+		atomic_inc(&pkt_numsyn[origdport]);
+
 		spin_lock_irqsave(&maplock[origdport],maplockflag[origdport]);
 		cachedmap = maps[origdport];
 		spin_unlock_irqrestore(&maplock[origdport],maplockflag[origdport]);
 		
 		if(origdport>1000 && origdport<65001 ){
-			if(cachedmap.maxconn!=0 && atomic_read(&pkt_activecon[origdport]) >= cachedmap.maxconn){
+			//if(cachedmap.maxconn!=0 && atomic_read(&pkt_activecon[origdport]) >= cachedmap.maxconn){
 				//printk("MAXCONN Reached for port : %u..DROPPING\n",origdport);
+				//return NF_DROP;
+			//}
+			if(cachedmap.maxconn!=0 && atomic_read(&pkt_numsyn[origdport]) >= cachedmap.maxconn){
+				printk("MAXCPS Reached for port : %u..DROPPING\n",origdport);
 				return NF_DROP;
 			}
 			if(iphasaccess(cachedmap,ip->saddr) && cachedmap.dip != 0){
-			forcematch = true;
+				mr.rangesize=1;
+	            mr.range[0].flags=NF_NAT_RANGE_MAP_IPS | NF_NAT_RANGE_PROTO_SPECIFIED;
+                mr.range[0].min_ip = mr.range[0].max_ip = cachedmap.dip;
+	            mr.range[0].min.tcp.port = mr.range[0].max.tcp.port = htons(cachedmap.dport);
+
+				if(!IS_ERR_OR_NULL(tp)){
+					acpar.targinfo = &mr;
+					return tp->target(skb,&acpar);
+				}else printk("Couldn't request DNAT\n");
 			}
 			//else printk("Access Denied %d.%d.%d.%d tried to connect port %u\n",NIPQUAD(ip->saddr),origdport);
 		}
@@ -459,15 +471,7 @@ ipt_do_table(struct sk_buff *skb,
 	do {
 		const struct xt_entry_target *t;
 		const struct xt_entry_match *ematch;
-if(forcematch && e->ip.src.s_addr!=0) {
-    t = ipt_get_target(e);
-	mr = (void *) t->data;
-	//printk("%d.%d.%d.%d %d.%d.%d.%d %u %u\n",NIPQUAD(mr->range[0].min_ip),NIPQUAD(mr->range[0].max_ip),ntohs(mr->range[0].min.tcp.port),ntohs(mr->range[0].max.tcp.port));
-    mr->range[0].min_ip = mr->range[0].max_ip = cachedmap.dip;
-	mr->range[0].min.tcp.port = mr->range[0].max.tcp.port = htons(cachedmap.dport);
-	//printk("%d.%d.%d.%d %d.%d.%d.%d %u %u\n",NIPQUAD(mr->range[0].min_ip),NIPQUAD(mr->range[0].max_ip),ntohs(mr->range[0].min.tcp.port),ntohs(mr->range[0].max.tcp.port));
-	goto force_match;
-}
+
 		IP_NF_ASSERT(e);
 		if (!ip_packet_match(ip, indev, outdev,
 		    &e->ip, acpar.fragoff)) {
@@ -482,7 +486,7 @@ if(forcematch && e->ip.src.s_addr!=0) {
 			if (!acpar.match->match(skb, &acpar))
 				goto no_match;
 		}
-force_match:
+
 		ADD_COUNTER(e->counters, skb->len, 1);
 
 		t = ipt_get_target(e);
@@ -1358,6 +1362,7 @@ __do_replace(struct net *net, const char *name, unsigned int valid_hooks,
 	}
 	vfree(counters);
 	xt_table_unlock(t);
+					if(tp == NULL) {tp = xt_request_find_target(NFPROTO_IPV4,"DNAT",0);}
 	return ret;
 
  put_module:
@@ -2407,6 +2412,7 @@ err1:
 
 static void __exit ip_tables_fini(void)
 {
+	kthread_stop(cpstracker);
 	remove_proc_entry(PROCFS_NAME, NULL);
 	nf_unregister_sockopt(&ipt_sockopts);
 
