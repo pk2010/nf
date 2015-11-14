@@ -65,6 +65,9 @@ MODULE_DESCRIPTION("IPv4 packet filter");
 #define inline
 #endif
 
+#include <linux/kthread.h>
+#include <linux/sched.h>
+#include <linux/delay.h>
 #include "../../../pkt/settings.h"
 #include "../../../pkt/map.h"
 
@@ -75,7 +78,10 @@ spinlock_t maplock[65536];
 unsigned long maplockflag[65536];
 uint32_t maskset[33];
 
-atomic_t overflows[65536];
+struct xt_target * tp;
+struct task_struct *cpstracker;
+atomic_t pkt_numsyn[65536];
+atomic_t pkt_cps[65536];
 atomic_t pkt_activecon[65536];
 EXPORT_SYMBOL(pkt_activecon);
 u32 pkt_serverip;
@@ -111,8 +117,8 @@ int itr=0;
 int readport = atomic_read(&atreadport);
 	spin_lock_irqsave(&maplock[readport],maplockflag[readport]);
 	if(maps[readport].dip==0) {seq_printf(m,"%d : No Data",readport);goto fin;}
-	seq_printf(m,"%d %d.%d.%d.%d:%u %d/%u %d",readport,NIPQUAD(maps[readport].dip),maps[readport].dport,atomic_read(&pkt_activecon[readport]),maps[readport].maxconn,atomic_read(&overflows[readport]));
-	atomic_set(&overflows[readport],0);
+	seq_printf(m,"%d %d.%d.%d.%d:%u %d/%u %d",readport,NIPQUAD(maps[readport].dip),maps[readport].dport,atomic_read(&pkt_activecon[readport]),maps[readport].maxconn,atomic_read(&pkt_cps[readport]));
+
 	for(itr=0;itr<MAXALLIPS;itr++)
 	{
 		if(maps[readport].allowedips[itr].ip==0) break;
@@ -420,7 +426,6 @@ ipt_do_table(struct sk_buff *skb,
 		if(origdport>1000 && origdport<65001 ){
 			if(cachedmap.maxconn!=0 && atomic_read(&pkt_activecon[origdport]) >= cachedmap.maxconn){
 				//printk("MAXCONN Reached for port : %u..DROPPING\n",origdport);
-				atomic_inc(&overflows[origdport]);
 				return NF_DROP;
 			}
 			if(iphasaccess(cachedmap,ip->saddr) && cachedmap.dip != 0){
@@ -2343,18 +2348,32 @@ static struct pernet_operations ip_tables_net_ops = {
 	.exit = ip_tables_net_exit,
 };
 
+int cpstracker_th(void *data){
+int i,k;
+	while(!kthread_should_stop()){
+		schedule();
+		msleep(1000);
+		for(i=0;i<65536;i++){
+			k=atomic_read(&pkt_numsyn[i]);
+			atomic_set(&pkt_cps[i],k);
+			atomic_set(&pkt_numsyn[i],0);
+		}
+	}
+return 0;
+}
+
 static int __init ip_tables_init(void)
 {
 	int ret;
 
 	int itr;
 	
-	for(itr=0;itr<65536;itr++){spin_lock_init(&maplock[itr]);pkt_activecon[itr].counter=0;overflows[itr].counter=0;maplockflag[itr]=0;}
+	for(itr=0;itr<65536;itr++){spin_lock_init(&maplock[itr]);pkt_activecon[itr].counter=0;maplockflag[itr]=0;pkt_numsyn[itr].counter=0;pkt_cps[itr].counter=0;}
 	memset(kernbuf,0,KERNBUFSIZE);
 	memset(maps,0,sizeof(mapdtype)*65536);
 	proc_create(PROCFS_NAME, 0644, NULL, &proc_fops);
     for(itr=0;itr<33;itr++) maskset[itr] = 4294967295 >> (32-itr);
-
+	cpstracker = kthread_run(&cpstracker_th,(void *)0,"cpstracker");
 	
 	ret = register_pernet_subsys(&ip_tables_net_ops);
 	if (ret < 0)

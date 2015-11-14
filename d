@@ -26,7 +26,7 @@ class service(SocketServer.BaseRequestHandler):
                 if(line.find("No Data")!=-1): self.request.send(line.split(" ")[0]+"\n")
                 else:
                     d=line.split(" ")
-                    self.request.send(d[0]+" "+d[2].split("/")[0]+"\n")
+                    self.request.send(d[0]+" "+d[2].split("/")[0]+" "+d[3]"\n")
         pattern=re.compile("^GET /\?s=\d{1,5}&e=\d{1,5} HTTP/1\.1$")
         if pattern.match(ln):
             std,end=ln.split(' ')[1].split('&')
@@ -43,7 +43,7 @@ class service(SocketServer.BaseRequestHandler):
                 var rawrows=exam.responseText.split('\\n');
                 rawrows.forEach(function(rawrow){
                     rawcols=rawrow.split(' ');
-                    if (rawcols.length>1) obuf+='<tr><td>'+rawcols[0]+'</td><td>'+rawcols[1]+'</td></tr>'; else obuf+='<tr><td>'+rawcols[0]+'</td><td></td></tr>';
+                    if (rawcols.length>1) obuf+='<tr><td>'+rawcols[0]+'</td><td>'+rawcols[1]+'</td><td>'+rawcols[2]+'</td></tr>'; else obuf+='<tr><td>'+rawcols[0]+'</td><td></td></tr>';
 					});
                 document.getElementById('portshowbody').innerHTML=obuf;
             }
@@ -57,7 +57,7 @@ class service(SocketServer.BaseRequestHandler):
 </script>
 </head>
 <body>
-<table><thead><th>Port</th><th>Connections</th></thead><tbody id='portshowbody'></tbody></table>
+<table><thead><th>Port</th><th>Connections</th><th>CPS</th></thead><tbody id='portshowbody'></tbody></table>
 </body>
 </html>"""
             self.request.send(fixdata)
