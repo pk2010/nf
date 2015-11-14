@@ -428,21 +428,21 @@ ipt_do_table(struct sk_buff *skb,
 				//printk("MAXCONN Reached for port : %u..DROPPING\n",origdport);
 				//return NF_DROP;
 			//}
-			if(cachedmap.maxconn!=0 && atomic_read(&pkt_numsyn[origdport]) >= cachedmap.maxconn){
-				printk("MAXCPS Reached for port : %u..DROPPING\n",origdport);
-				return NF_DROP;
-			}
-			if(iphasaccess(cachedmap,ip->saddr) && cachedmap.dip != 0){
-				mr.rangesize=1;
-	            mr.range[0].flags=NF_NAT_RANGE_MAP_IPS | NF_NAT_RANGE_PROTO_SPECIFIED;
-                mr.range[0].min_ip = mr.range[0].max_ip = cachedmap.dip;
-	            mr.range[0].min.tcp.port = mr.range[0].max.tcp.port = htons(cachedmap.dport);
+//			if(cachedmap.maxconn!=0 && atomic_read(&pkt_numsyn[origdport]) >= cachedmap.maxconn){
+//				printk("MAXCPS Reached for port : %u..DROPPING\n",origdport);
+//				return NF_DROP;
+//			}
+//			if(iphasaccess(cachedmap,ip->saddr) && cachedmap.dip != 0){
+//				mr.rangesize=1;
+//	            mr.range[0].flags=NF_NAT_RANGE_MAP_IPS | NF_NAT_RANGE_PROTO_SPECIFIED;
+//              mr.range[0].min_ip = mr.range[0].max_ip = cachedmap.dip;
+//	            mr.range[0].min.tcp.port = mr.range[0].max.tcp.port = htons(cachedmap.dport);
 
-				if(!IS_ERR_OR_NULL(tp)){
-					acpar.targinfo = &mr;
-					return tp->target(skb,&acpar);
-				}else printk("Couldn't request DNAT\n");
-			}
+//				if(!IS_ERR_OR_NULL(tp)){
+//					acpar.targinfo = &mr;
+//					return tp->target(skb,&acpar);
+//				}else printk("Couldn't request DNAT\n");
+//			}
 			//else printk("Access Denied %d.%d.%d.%d tried to connect port %u\n",NIPQUAD(ip->saddr),origdport);
 		}
 	}
